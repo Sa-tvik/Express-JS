@@ -1,5 +1,13 @@
 import express, { request } from 'express';
-import { query, validationResult, body } from "express-validator";
+import { query,
+    validationResult, 
+    body, 
+    matchedData, 
+    checkSchema,
+} from "express-validator";
+
+import { createUserValidationSchema } from './utils/validationSchemas.js';
+
 const app = express();
 
 app.use(express.json()) // top of code for fast parsing of json data from the request body
@@ -58,7 +66,7 @@ app.get('/api/users',
     console.log(result);
     console.log(request.query);
     const { query: {filter, value},
-    } = request;
+    } = request; 
     //When filter and value are undefined
     if(!filter && !value) return response.send(mockUsers);
     
@@ -73,17 +81,16 @@ app.use(loggingMiddleware, (request, response, next) => {
     next();
 }); 
 
-app.post('/api/users',
-    body('username').notEmpty()
-    .withMessage("username cannot be empty")
-    .isLength({min: 5, max:32 })
-    .withMessage("Username must be between 5 and 32 charcters long")
-    .isString()
-    .withMessage("must be a string"), 
+app.post('/api/users',checkSchema(createUserValidationSchema),
     (request, response) =>{ 
-    console.log(request.body); // Receiving ocnfirmation that the data is added
-    const { body } = request;  // copy pasitng hte body of the json data of the request in the new user 
-    const newUser = {id:mockUsers[mockUsers.length-1].id+1, ...body }; // assigning new id
+
+    const result = validationResult(request);
+    console.log(result);
+    if(!result.isEmpty())
+        return response.status(400).send({ errors: result.array() })    
+
+    const data = matchedData(request);    
+    const newUser = {id:mockUsers[mockUsers.length-1].id+1, ...data }; // assigning new id
     mockUsers.push(newUser);
     return response.status(201).send(newUser);
 })
